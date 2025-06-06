@@ -1,0 +1,34 @@
+import arcpy
+
+# Définition des chemins
+table_source = r"C:\Users\NDIOUF\Documents\Carte_Arcgis\PAVE\PAVE.gdb\sig_geosql_voirie_pave_obstacle_ponctuel"  # Table contenant les champs
+table_cible = r"C:\Users\NDIOUF\Documents\Carte_Arcgis\PAVE\PAVE.gdb\couche_obstacles_séparéss"  # Table où on veut ajouter les champs
+
+# Champs utilisés
+champ_id = "id"  # Champ commun
+champs_a_copier = [
+    "num_photo", "auditif", "mental", "moteur", "malmarch", 
+    "visuel", "obsinacce", "annee_tx_faits", "cree_le", "modif_par", 
+    "modif_le", "modif_raison"
+]
+
+# Vérifier et ajouter les champs dans la table cible s'ils n'existent pas
+for champ in champs_a_copier:
+    if champ not in [f.name for f in arcpy.ListFields(table_cible)]:
+        arcpy.management.AddField(table_cible, champ, "TEXT")
+        print(f"Champ '{champ}' ajouté à {table_cible}")
+
+# Charger les valeurs des champs depuis la table source dans un dictionnaire {id: [valeurs...]}
+valeurs_champs = {row[0]: row[1:] for row in arcpy.da.SearchCursor(table_source, [champ_id] + champs_a_copier)}
+
+# Mettre à jour la table cible avec les valeurs des champs
+with arcpy.da.UpdateCursor(table_cible, [champ_id] + champs_a_copier) as cursor:
+    for row in cursor:
+        if row[0] in valeurs_champs:
+            row[1:] = valeurs_champs[row[0]]
+            cursor.updateRow(row)
+
+print("Jointure terminée : tous les champs sont mis à jour avec les valeurs de la table source.")
+
+
+

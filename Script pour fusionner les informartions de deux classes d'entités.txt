@@ -1,0 +1,43 @@
+import arcpy
+import os
+
+# Chemins vers les classes d'entités
+cheminement_fc = r"C:\Users\NDIOUF\Documents\Carte_Arcgis\PAVE\pave_initial.gdb\dcvte__etude__accessibilite_cheminement"
+passage_fc = r"C:\Users\NDIOUF\Documents\Carte_Arcgis\PAVE\pave_initial.gdb\dcvte__etude__accessibilite_passage_pieton"
+
+# Récupération du chemin de la géodatabase
+gdb_path = r"C:\Users\NDIOUF\Documents\Carte_Arcgis\PAVE\pave_initial.gdb"
+table_name = "table_fusion_cheminement_passage"
+table_path = os.path.join(gdb_path, table_name)
+
+# Je supprime la table si elle existe déjà
+if arcpy.Exists(table_path):
+    arcpy.Delete_management(table_path)
+
+# Création d'une nouvelle table
+arcpy.CreateTable_management(gdb_path, table_name)
+
+# Ajout des champs
+arcpy.AddField_management(table_path, "Classe", "TEXT", field_length=50)
+arcpy.AddField_management(table_path, "ID_Objectif", "LONG")
+arcpy.AddField_management(table_path, "Type_Geometrie", "TEXT", field_length=20)
+arcpy.AddField_management(table_path, "Longueur_m", "DOUBLE")
+
+# Fonction d'extraction dynamique
+def extraire_infos(nom_fc, nom_source, champ_id):
+    champs_utilises = [champ_id, "SHAPE@", "Shape_Length"]
+    with arcpy.da.SearchCursor(nom_fc, champs_utilises) as cursor_in:
+        with arcpy.da.InsertCursor(table_path, ["Classe", "ID_Objectif", "Type_Geometrie", "Longueur_m"]) as cursor_out:
+            for row in cursor_in:
+                cursor_out.insertRow([
+                    nom_source,
+                    row[0],
+                    row[1].type,
+                    round(row[2], 2)
+                ])
+
+# Extraction des données
+extraire_infos(cheminement_fc, "CHEMINEMENT", "OBJECTID")
+extraire_infos(passage_fc, "voirie_pave_passage", "OBJECTID")
+
+print(f"✅ Table créée et remplie : {table_path}")

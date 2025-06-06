@@ -1,0 +1,79 @@
+import arcpy
+import os
+import math
+
+#Chemins vers les classes d'entités
+cheminement_fc = r"C:\Users\NDIOUF\Documents\Carte_Arcgis\PAVE\pave_initial.gdb\dcvte__etude__accessibilite_cheminement"
+passage_fc = r"C:\Users\NDIOUF\Documents\Carte_Arcgis\PAVE\pave_initial.gdb\dcvte__etude__accessibilite_passage_pieton"
+
+#Chemin vers la géodatabase
+gdb_path = r"C:\Users\NDIOUF\Documents\Carte_Arcgis\PAVE\pave_initial.gdb"
+table_name = "distances_extremites_proches"
+table_path = os.path.join(gdb_path, table_name)
+
+#Supprimer la table si elle existe déjà
+if arcpy.Exists(table_path):
+    arcpy.Delete_management(table_path)
+
+#Je créer une nouvelle table
+arcpy.CreateTable_management(gdb_path, table_name)
+arcpy.AddField_management(table_path, "Classe_Source", "TEXT", field_length=50)
+arcpy.AddField_management(table_path, "ID_Source", "LONG")
+arcpy.AddField_management(table_path, "Classe_Proche", "TEXT", field_length=50)
+arcpy.AddField_management(table_path, "ID_Proche", "LONG")
+arcpy.AddField_management(table_path, "Distance_m", "DOUBLE")
+
+#Fonctions utilitaires
+def get_endpoints(geom):
+    return geom.firstPoint, geom.lastPoint
+
+def calc_distance(p1, p2):
+    return math.hypot(p1.X - p2.X, p1.Y - p2.Y)
+
+# Liste des entités avec leurs points d’extrémités
+entities = []
+
+def charger_entites(fc, champ_id, classe):
+    with arcpy.da.SearchCursor(fc, [champ_id, "SHAPE@"]) as cursor:
+        for row in cursor:
+            start, end = get_endpoints(row[1])
+            entities.append({
+                "Classe": classe,
+                "ID": row[0],
+                "Start": start,
+                "End": end
+            })
+
+# Charger les deux classes d’entités
+charger_entites(cheminement_fc, "OBJECTID", "CHEMINEMENT")
+charger_entites(passage_fc, "OBJECTID", "PASSAGE")
+
+# Insertion des distances dans la table
+with arcpy.da.InsertCursor(table_path, ["Classe_Source", "ID_Source", "Classe_Proche", "ID_Proche", "Distance_m"]) as insert_cursor:
+    for i, e1 in enumerate(entities):
+        min_dist = float("inf")
+        closest_entity = None
+        for j, e2 in enumerate(entities):
+            if i == j:
+                continue
+            distances = [
+                calc_distance(e1["Start"], e2["Start"]),
+                calc_distance(e1["Start"], e2["End"]),
+                calc_distance(e1["End"], e2["Start"]),
+                calc_distance(e1["End"], e2["End"])
+            ]
+            dmin = min(distances)
+            if dmin < min_dist:
+                min_dist = dmin
+                closest_entity = e2
+
+        # Insertion de la ligne dans la table
+        insert_cursor.insertRow([
+            e1["Classe"],
+            e1["ID"],
+            closest_entity["Classe"],
+            closest_entity["ID"],
+            round(min_dist, 2)
+        ])
+
+print(f"Table des distances extrémités créée et remplie ici : {table_path}")

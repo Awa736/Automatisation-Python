@@ -1,0 +1,55 @@
+import arcpy
+import os
+
+# Chemins vers les classes d'entités linéaires 
+cheminement_fc = r"C:\Users\NDIOUF\Documents\Carte_Arcgis\PAVE\pave_initial.gdb\dcvte__etude__accessibilite_cheminement"
+passage_fc = r"C:\Users\NDIOUF\Documents\Carte_Arcgis\PAVE\pave_initial.gdb\dcvte__etude__accessibilite_passage_pieton"
+
+# Géodatabase et nom de la classe de sortie
+gdb_path = r"C:\Users\NDIOUF\Documents\Carte_Arcgis\PAVE\pave_initial.gdb"
+output_fc_name = "extremites_points"
+output_fc = os.path.join(gdb_path, output_fc_name)
+
+# Libère les verrous si besoin
+arcpy.ClearWorkspaceCache_management()
+
+
+# Je supprime l'ancienne classe si elle existe
+if arcpy.Exists(output_fc):
+    arcpy.Delete_management(output_fc)
+
+#  Créeation d'une nouvelle classe d'entité de type point
+arcpy.CreateFeatureclass_management(
+    out_path=gdb_path,
+    out_name=output_fc_name,
+    geometry_type="POINT",
+    spatial_reference=cheminement_fc  # je prend la même projection
+)
+
+#Ajout des champs d'attributs
+arcpy.AddField_management(output_fc, "Classe", "TEXT", field_length=50)
+arcpy.AddField_management(output_fc, "ID_Objectif", "LONG")
+arcpy.AddField_management(output_fc, "Extremite", "TEXT", field_length=10)  # Début ou Fin
+
+# Liste des classes à traiter 
+classes = [
+    (cheminement_fc, "CHEMINEMENT", "OBJECTID"),
+    (passage_fc, "voirie_pave_passage", "OBJECTID")
+]
+
+# classe de points 
+points_uniques = set()
+
+with arcpy.da.InsertCursor(output_fc, ["SHAPE@", "Classe", "ID_Objectif", "Extremite"]) as insert_cursor:
+    for fc_path, nom_classe, champ_id in classes:
+        with arcpy.da.SearchCursor(fc_path, [champ_id, "SHAPE@"]) as search_cursor:
+            for row in search_cursor:
+                id_obj = row[0]
+                ligne = row[1]
+                for extremite, label in [(ligne.firstPoint, "Debut"), (ligne.lastPoint, "Fin")]:
+                    key = (round(extremite.X, 3), round(extremite.Y, 3))  # arrondi pour éviter les très petites différences
+                    if key not in points_uniques:
+                        points_uniques.add(key)
+                        insert_cursor.insertRow([extremite, nom_classe, id_obj, label])
+
+print(f" Classe de points créée avec les extrémités : {output_fc}")

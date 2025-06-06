@@ -1,0 +1,27 @@
+import arcpy
+import os
+
+# Classe des extrémités générée précédemment
+extremites_fc = r"C:\Users\NDIOUF\Documents\Carte_Arcgis\PAVE\pave_initial.gdb\extremites_points"
+
+# Classe de sortie
+output_fc = r"C:\Users\NDIOUF\Documents\Carte_Arcgis\PAVE\pave_initial.gdb\extremites_regroupees"
+
+# Supprimer si elle existe
+if arcpy.Exists(output_fc):
+    arcpy.Delete_management(output_fc)
+
+# Copier les données pour les modifier sans toucher à l'original
+arcpy.management.CopyFeatures(extremites_fc, output_fc)
+
+# Appliquer l'intégration (tolérance = 1 mètre ici)
+arcpy.management.Integrate(in_features=[output_fc], cluster_tolerance="1 Meters")
+
+# Supprimer les doublons géométriques (ajout minimal)
+arcpy.management.DeleteIdentical(
+    in_dataset=output_fc,
+    fields=["Shape"],
+    xy_tolerance="0.001 Meters"
+)
+
+print(f" Intégration terminée et doublons supprimés : {output_fc}")

@@ -1,0 +1,62 @@
+import arcpy
+import os
+
+# Chemins vers les données
+cheminement_fc = r"C:\Users\NDIOUF\Documents\Carte_Arcgis\PAVE\pave_initial.gdb\dcvte__etude__accessibilite_cheminement"
+noeuds_fc = r"C:\Users\NDIOUF\Documents\Carte_Arcgis\PAVE\pave_initial.gdb\extremites_points"
+gdb = r"C:\Users\NDIOUF\Documents\Carte_Arcgis\PAVE\pave_initial.gdb"
+code_insee = "92073"
+
+# === Étape 1 : J'ajoute un champ ID_NOD_NETEX aux nœuds ===
+if "ID_NOD_NETEX" not in [f.name for f in arcpy.ListFields(noeuds_fc)]:
+    arcpy.AddField_management(noeuds_fc, "ID_NOD_NETEX", "TEXT", field_length=100)
+
+with arcpy.da.UpdateCursor(noeuds_fc, ["OBJECTID", "ID_NOD_NETEX"]) as cursor:
+    for oid, _ in cursor:
+        identifiant = f"{code_insee}:NOD:{oid:06}:LOC"
+        cursor.updateRow([oid, identifiant])
+
+# === Étape 2 : J'ajoute le champ "from_id" dans la classe des cheminements ===
+if "from_id" not in [f.name for f in arcpy.ListFields(cheminement_fc)]:
+    arcpy.AddField_management(cheminement_fc, "from_id", "TEXT", field_length=100)
+
+# === Étape 3 : Je génére une table de proximité ===
+near_table = os.path.join(gdb, "cheminement_near_noeuds")
+if arcpy.Exists(near_table):
+    arcpy.Delete_management(near_table)
+
+arcpy.analysis.GenerateNearTable(
+    in_features=cheminement_fc,
+    near_features=noeuds_fc,
+    out_table=near_table,
+    search_radius="1 Meters",  
+    location="LOCATION",
+    angle="NO_ANGLE",
+    closest="CLOSEST",
+    closest_count=1
+)
+
+# === Étape 4 : Je crrée un dictionnaire associant chaque tronçon à un nœud proche ===
+near_dict = {}
+with arcpy.da.SearchCursor(near_table, ["IN_FID", "NEAR_FID"]) as cursor:
+    for in_fid, near_fid in cursor:
+        near_dict[in_fid] = near_fid
+
+# === Étape 5 : Lire les ID_NOD_NETEX des nœuds ===
+idnod_dict = {}
+with arcpy.da.SearchCursor(noeuds_fc, ["OBJECTID", "ID_NOD_NETEX"]) as cursor:
+    for oid, idnetex in cursor:
+        idnod_dict[oid] = idnetex
+
+# === Étape 6 : Mise à jour du champ "from_id" ===
+with arcpy.da.UpdateCursor(cheminement_fc, ["OBJECTID", "from_id"]) as cursor:
+    for row in cursor:
+        oid = row[0]
+        if oid in near_dict:
+            id_noeud = near_dict[oid]
+            id_netex = idnod_dict.get(id_noeud, None)
+            if id_netex:
+                row[1] = id_netex
+                cursor.updateRow(row)
+                
+print("Champ 'from_id' mis à jour avec les identifiants NetEx des nœuds.")
