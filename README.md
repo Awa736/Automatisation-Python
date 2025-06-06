@@ -1,1 +1,1 @@
-# Automatisation-Python
+Ce dépôt contient une série de scripts Python développés avec le module ArcPy, dans le cadre d’un stage en Système d’Information Géographique (SIG) à la mairie de Suresnes (2025). Ces scripts ont été élaborés pour accompagner la mise en œuvre du Plan de mise en accessibilité de la voirie et des espaces publics (PAVE), conformément aux exigences de la loi du 11 février 2005.
