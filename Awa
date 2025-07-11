@@ -1,9 +1,0 @@
-## 📝 Scripts Python - Accessibilité voirie (PAVE)
-
-[![Aperçu du standard CNIG](https://cnig.gouv.fr/IMG/png/250314_standard_cnig_accessibilite_v2021-10_rev2025-03.png)](https://cnig.gouv.fr/IMG/pdf/250314_standard_cnig_accessibilite_v2021-10_rev2025-03.pdf)
-
-Ce dépôt contient une série de scripts Python développés avec le module **ArcPy**, dans le cadre d’un stage en Système d’Information Géographique (**SIG**) à la mairie de Suresnes (2025).  
-Ces scripts ont été élaborés pour accompagner la mise en œuvre du **Plan de mise en accessibilité de la voirie et des espaces publics (PAVE)**, conformément aux exigences de la loi du 11 février 2005.
-
-👉 [Télécharger le standard CNIG Accessibilité](https://cnig.gouv.fr/IMG/pdf/250314_standard_cnig_accessibilite_v2021-10_rev2025-03.pdf)
-
